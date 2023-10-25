@@ -1,0 +1,114 @@
+FUNCTION_BLOCK GPS_POS_DIFF
+NAME:'GPS_POS_DIFF'
+AUTHOR:'LEONARDO'
+FAMILY:'FLSMIDTH'
+VERSION:'1.0'
+// Typical attributes
+{
+  S7_tasklist:='OB100';
+  S7_m_c:='true';
+  S7_blockview:='big';
+  S7_alarm_ui:='1';
+  S7_read_back:='true'
+}
+VAR_INPUT
+    Graus_Lat_01{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:INT;//GRAUS DA LATIDUDE INICIAL
+    Min_Lat_01{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:INT;//MINUTOS DA LATIDUDE INICIAL
+    Seg_Lat_01{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:REAL;//SEGUNDOS DA LATIDUDE INICIAL
+    Graus_Lat_02{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:INT;//GRAUS DA LATIDUDE FINAL
+    Min_Lat_02{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:INT;//MINUTOS DA LATIDUDE FINAL
+    Seg_Lat_02{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:REAL;//SEGUNDOS DA LATIDUDE FINAL
+    Graus_Long_01{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:INT;//GRAUS DA LongITUDE INICIAL
+    Min_Long_01{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:INT;//MINUTOS DA LongITUDE INICIAL
+    Seg_Long_01{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:REAL;//SEGUNDOS DA LongITUDE INICIAL
+    Graus_Long_02{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:INT;//GRAUS DA LongITUDE FINAL
+    Min_Long_02{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:INT;//MINUTOS DA LongITUDE FINAL
+    Seg_Long_02{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:REAL;//SEGUNDOS DA LongITUDE FINAL
+    Altura_01 {S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:REAL; //ALTURA DO PONTO INICIAL
+    Altura_02 {S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:REAL; //ALTURA DO PONTO FINAL
+    //In_Dist {S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}:REAL; //DISTANCIA SUPOSTA ENTRE O PONTO INICIAL E FINAL PARA CALCULAR O ANGULO DE ELEVACAO
+    Norte_Offset{S7_m_c := 'true';S7_read_back := 'true';S7_param := 'true'}: REAL;//DESLOCAMENTO DO NORTE PARA BEARING RELATIVO
+    
+END_VAR    
+
+VAR_OUTPUT
+    Dist {S7_m_c := 'true'}:REAL;//DISTANCIA ENTRE OS PONTOS
+    Bearing {S7_m_c := 'true'}:REAL;//ANGULO COM RELACAO AO NORTE, NORTE 0, LESTE 90
+    Bearing_Relativo {S7_m_c := 'true'}:REAL;//BEARING COM NORTE DELOCADO
+    Diff_Elev {S7_m_c := 'true'}:REAL;//DIFERENÇA DE ELEVACAO ENTRE OS PONTOS INICIAIS E FINAIS
+    Angulo_Elev {S7_m_c := 'true'}:REAL;//ANGULO DE ELEVACAO ENTRE OS PONTOS INICIAIS E FINAIS
+    DB_NUMBER : INT;//Numero da DB
+END_VAR
+
+VAR
+    LAT_01:REAL;//LATIDUDE INICIAL
+    LAT_02:REAL;//LATITUDE FINAL
+    LONG_01:REAL;//LONGITUDE INICIAL
+    LONG_02:REAL;//LONGITUDE FINAL
+    DLONG:REAL;
+    DLAT:REAL;
+    HALF_DLAT:REAL;
+    HALF_DLONG:REAL;
+    SIN_HALF_DLAT:REAL;
+    SIN_HALF_DLONG:REAL;
+    PWD_SIN_HALF_LAT:REAL;
+    PWD_SIN_HALF_LONG:REAL;
+    COS_LAT_01:REAL;
+    COS_LAT_02:REAL;
+    VAL_A:REAL;
+    VAL_B:REAL;
+    SQRT_VAL_A:REAL;
+    SQRT_VAL_1_MINUS_A:REAL;
+    X:REAL;
+    Y:REAL;
+    XY:REAL;
+END_VAR
+
+
+BEGIN;
+    LAT_01:= -( DINT_TO_REAL(Graus_Lat_01) + DINT_TO_REAL(Min_Lat_01)/60 + Seg_Lat_01/3600);
+    LAT_02:= -(DINT_TO_REAL(Graus_Lat_02) + DINT_TO_REAL(Min_Lat_02)/60 + Seg_Lat_02/3600);
+    LONG_01:= -(DINT_TO_REAL(Graus_Long_01) + DINT_TO_REAL(Min_Long_01)/60 + Seg_Long_01/3600);
+    LONG_02:= -(DINT_TO_REAL(Graus_Long_02) + DINT_TO_REAL(Min_Long_02)/60 + Seg_Long_02/3600);
+
+    DLAT:= RAD(-Seg_Lat_01/3600) - RAD(-Seg_Lat_02/3600);
+    DLONG := RAD(-Seg_Long_01/3600) - RAD(-Seg_Long_02/3600);
+    HALF_DLAT := DLAT/2; 
+    HALF_DLONG := DLONG/2;
+    SIN_HALF_DLAT := SIN(HALF_DLAT);
+    SIN_HALF_DLONG:= SIN(HALF_DLONG);
+    PWD_SIN_HALF_LAT:=SIN_HALF_DLAT *SIN_HALF_DLAT;
+    PWD_SIN_HALF_LONG:=SIN_HALF_DLONG*SIN_HALF_DLONG;
+    COS_LAT_01 := COS(RAD(LAT_01));
+    COS_LAT_02 := COS(RAD(LAT_02));
+    VAL_A:= PWD_SIN_HALF_LAT+ COS_LAT_01 * COS_LAT_02 * PWD_SIN_HALF_LONG;
+    SQRT_VAL_A :=SQRT(VAL_A);
+    SQRT_VAL_1_MINUS_A:=SQRT((1-VAL_A));
+    VAL_B:= 2 * ATAN((SQRT_VAL_A/SQRT_VAL_1_MINUS_A));
+    DIST := VAL_B * 6373000.0;
+     //ATAN(X/Y) X = #cos Long-b * sin Delta-Lat E Y = #cos Long-a * sin Long-b – sin Long-a * cos Long-b * cos Delta-Lat 
+    X:=COS(RAD(LAT_02)) * SIN(DLONG);
+    Y:=COS(RAD(LAT_01)) * SIN(RAD(LAT_02)) - COS(RAD(LAT_02)) * SIN(RAD(LAT_01)) * COS(DLONG);
+    XY := X/Y;
+    IF y > 0 THEN
+        BEARING := ATAN(XY);
+    ELSIF Y<0 AND X >= 0 THEN
+        BEARING := ATAN(XY) + 3.141592653589793 ;
+    ELSIF Y<0 AND X < 0 THEN
+        BEARING := ATAN(XY) - 3.141592653589793 ;
+    ELSIF Y = 0 AND X > 0 THEN
+        BEARING := ATAN(XY) + 3.141592653589793/2 ;
+    ELSIF Y = 0 AND X < 0 THEN
+        BEARING := ATAN(XY) - 3.141592653589793/2 ;
+    ELSE
+        BEARING := 0;
+    END_IF;
+    
+    BEARING :=  (BEARING * 180) / 3.141592653589793;
+    BEARING_RELATIVO := BEARING + NORTE_OFFSET;
+    
+    Diff_Elev:= Altura_02 - Altura_01;
+    Angulo_Elev := (ASIN(Diff_Elev/DIST)* 180)/ 3.141592653589793;
+    
+    DB_NUMBER := WORD_TO_INT(GET_DBN(DB_ANY :=  Graus_Lat_01));
+END_FUNCTION_BLOCK
