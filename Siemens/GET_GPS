@@ -1,0 +1,91 @@
+FUNCTION_BLOCK GET_GPS
+NAME:'GET_GPS'
+AUTHOR:'LEONARDO'
+FAMILY:'ENERPROJ'
+VERSION:'1.0'
+// Typical attributes
+{
+  S7_tasklist:='OB100';
+  S7_m_c:='true';
+  S7_blockview:='big'
+}
+VAR_INPUT
+    DB_NUM : WORD;
+    CONN_FAIL_TIME:DINT;
+    CONN_FAIL_ACTIVE:BOOL;
+END_VAR
+
+VAR_OUTPUT
+    LATITUDE : STRING;
+    LONGITUDE : STRING;
+    ELEV:STRING;
+    TEMPO : STRING;
+    LAT_GRAUS: INT;
+    LAT_HORAS: INT;
+    LAT_MIN: INT;
+    LAT_SEC:REAL;
+    LON_GRAUS: INT;
+    LON_HORAS: INT;
+    LON_MIN: INT;
+    LON_SEC:REAL;
+    CONN_FAIL:BOOL;
+    ELEV_NUM:REAL;
+    i : INT;
+    b : BYTE;
+    b1:BYTE;
+    b2:BYTE;
+    b3:BYTE;
+    b4:BYTE;
+    b5:BYTE;
+    b6:BYTE;
+    passo : INT;
+END_VAR
+
+VAR
+    iniciou : BOOL;
+    finalizou : BOOL;
+    tempo_val : DINT;
+    ALARME_TIME : TON;
+    
+END_VAR
+
+
+BEGIN;
+    FOR i := 0 TO 320 DO
+        b := WORD_TO_BLOCK_DB(DB_NUM).DB[i];
+        b1 := WORD_TO_BLOCK_DB(DB_NUM).DB[i+1];
+        b2 := WORD_TO_BLOCK_DB(DB_NUM).DB[i+2];
+        b3 := WORD_TO_BLOCK_DB(DB_NUM).DB[i+3];
+        b4 := WORD_TO_BLOCK_DB(DB_NUM).DB[i+4];
+        b5 := WORD_TO_BLOCK_DB(DB_NUM).DB[i+5];
+        b6 := WORD_TO_BLOCK_DB(DB_NUM).DB[i+6];
+        IF iniciou = true AND b = 16#24 THEN
+            iniciou := false;
+            finalizou := true;
+            passo := 0;
+        
+        END_IF;
+        IF b = 16#24 AND b1 = 16#47 AND b2 = 16#4E AND b3 = 16#47 AND b4 = 16#4E AND b5 = 16#53 AND b6 = 16#2C THEN
+            iniciou := true;
+            finalizou := false;
+            Latitude := '';
+            Longitude := '';
+            Elev := '';
+            passo := 0;
+        END_IF;
+        
+        IF iniciou AND b = 16#2C THEn
+            passo := passo + 1;
+        
+        END_IF;
+        IF (passo = 1) AND (NOT b = 16#2C) THEN 
+            Tempo := CONCAT(in1:=Tempo,in2:=BYTE_TO_CHAR(b));
+        END_IF;
+        IF (passo = 1) AND (NOT b = 16#2C) THEN 
+            Tempo := CONCAT(in1:=Tempo,in2:=BYTE_TO_CHAR(b));
+        END_IF;
+        
+    END_FOR;
+
+END_FUNCTION_BLOCK
+
